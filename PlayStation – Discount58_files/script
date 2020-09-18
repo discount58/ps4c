@@ -1,0 +1,410 @@
+/* global jQuery, ActiveXObject */
+(function () {
+  if (window.tadaCMG3paEpS86uIYlFUah3UQaSj88GUfVx) {
+    return;
+  }
+  window.tadaCMG3paEpS86uIYlFUah3UQaSj88GUfVx = 1;
+
+  window.tada_shop_name = 'discount58.myshopify.com';
+
+  var CDN_URL = 'https://cdn.trytada.com/';
+  var shop_id = '5f5b78f3b145e27ac8153ad9'; 
+  var assets = 'https://cdn.trytada.com/widget-data/core/';
+  var version = '1600370396099';
+
+  if (document.readyState === 'complete') {
+    loadWidget();
+  } else {
+    document.addEventListener('DOMContentLoaded', function () {
+      loadWidget();
+    });
+  }
+
+  function loadWidget() {
+    var settingURL =  CDN_URL + 'widget-data/' + shop_id + '/settings/' + window.tada_shop_name + '_setting.json?' + new Date().getTime();
+    setTimeout(function () {
+      sendRequest(settingURL,
+        // headers: {
+        //   'Access-Control-Allow-Origin': '*',
+        //   'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+        // },
+        // dataType: 'JSON',
+        function (err, response) {
+          if (err) {
+            console.debug(err);
+            return;
+          }
+          var results = null;
+          try {
+            results = JSON.parse(response);
+          } catch (err) {
+            console.debug(err);
+            return;
+          }
+          window.tada_shopId = shop_id;
+          if (results.length == 0) {
+            eraseWidgetCookies(shop_id);
+            return;
+          }
+          var finalWidget;
+          if (getCookie('tada_' + shop_id + '_clockEnable') != null && getCookie('tada_' + shop_id + '_widgetId')) {
+            results.some(function (widget) {
+              if (!widget.pause && widget._id === getCookie('tada_' + shop_id + '_widgetId')) {
+                finalWidget = widget;
+                return true;
+              }
+            });
+          }
+
+          if (!finalWidget) {
+            finalWidget = matchWidget(results);
+          }
+
+          var htmlFile = '';
+          var cssFile = '';
+          if (!finalWidget) {
+            // eraseWidgetCookies(shop_id); // maybe need it
+            return;
+          }
+
+          var coupon = getCookie('tada_' + shop_id + '_Coupon');
+          if (typeof coupon === 'string' && coupon.trim() === '') {
+            eraseWidgetCookies(shop_id);
+          }
+
+          // force defaults
+          if (typeof finalWidget.collectEmail === 'undefined') {
+            finalWidget.collectEmail = true;
+          }
+          
+          if (getCookie('tada_' + shop_id + '_widgetId') && finalWidget._id !== getCookie('tada_' + shop_id + '_widgetId')) {
+            eraseWidgetCookies(shop_id);
+          }
+
+          if (getCookie('tada_' + shop_id + '_widgetId') && finalWidget._id === getCookie('tada_' + shop_id + '_widgetId')) {
+            if (getCookie('tada_' + shop_id + '_updatedAt')) {
+              var cookieDT = new Date(getCookie('tada_' + shop_id + '_updatedAt'));
+              var widgetDT = new Date(finalWidget.created_at);
+              if (cookieDT < widgetDT) {
+                eraseCookie('tada_' + shop_id + '_updatedAt');
+                eraseCookie('tada_' + shop_id + '_used');
+              }
+            }
+          }
+
+          window.tada_widget = finalWidget;
+          window.widget_available = true;
+          var script = '';
+          var widgetIsV2 = false;
+          var jsFile = '';
+          if (finalWidget.type == 0) {
+            if (finalWidget.wheelType == 'cartoon') {
+              widgetIsV2 = true;
+              jsFile = 'widget/cartoon.js';                  
+            } else {
+              widgetIsV2 = true;
+              jsFile = 'widget/classic.js';                  
+            }
+          } else if (finalWidget.type == 1) {
+            widgetIsV2 = true;
+            jsFile = 'widget/gift.js';
+        } else if (finalWidget.type == 2) {
+            widgetIsV2 = true;
+            if (finalWidget.popupType == 'regpopup') {
+              jsFile = 'widget/reg.js';
+            } else {
+              jsFile = 'widget/full.js';
+            }
+          }
+          if (widgetIsV2) {
+            script = document.createElement('script');
+            script.src = assets + jsFile + '?ts=' + version;
+            document.head.appendChild(script);
+            return;
+          }
+
+          if (typeof jQuery === "undefined") {
+            script = document.createElement("SCRIPT");
+            script.src ='https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js';
+            script.type = 'text/javascript';
+            script.onload = function() {
+              window.jQueryTada = jQuery.noConflict();
+              loadV1(window.jQueryTada);
+              // console.debug('separated jQuery loaded', window.jQueryTada && window.jQueryTada.fn && window.jQueryTada.fn.jquery);
+            };
+            document.head.append(script);
+          } else {
+            (function ($) {
+              'use strict';
+              var version = $.fn.jquery.split(' ')[0].split('.');
+              if ((version[0] < 2 && version[1] < 9) || (version[0] == 1 && version[1] == 9 && version[2] < 1) || (version[0] > 3)) {
+                throw new Error('Tada Cartoon Wheel, Gift Game and Regular Pop up require a jQuery version of 1.9.1 or higher, but lower than 4. We recommend that you try our Classic Wheel or Full Screen Pop Up which don\'t have jQuery requirements');
+              }
+            })(window.jQuery);   
+            loadV1(window.jQuery);
+          }
+      
+          function loadV1($) {
+            sendRequest(assets + htmlFile + '?ts=' + version,
+            // headers: {
+            //   'Access-Control-Allow-Origin': '*',
+            //   'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+            // },
+            function (err, results) {
+              if (err) {
+                console.debug(err);
+                return;
+              }
+              // <script src="{{CDN_URL}}widget-data/core/tadaMain.js?ts={{VERSION}}"></script>
+
+              // results = results.replace('{{VERSION}}', version);
+              var html = '<link rel="stylesheet" href="' + assets + cssFile + '?ts=' + version + '"/>';
+              var el = document.createElement('div');
+              el.setAttribute('class', 'tada-app-content');
+              document.body.appendChild(el);
+              el.innerHTML = html + results;
+
+              var script = document.createElement('script');
+              script.src = assets + jsFile + '?ts=' + version;
+              document.head.appendChild(script);
+
+              
+              $(document).keydown(function(event) { 
+                if (event.keyCode == 27) { 
+                  if ($('#tada_app_widget .modal').is(":visible")) {
+                    $('#tada_app_widget .modal').hide();
+                  }
+                }
+              });
+
+              }
+            );
+          }
+        });
+    }, 100);
+  }
+
+  function detectmob() {
+    if (navigator.userAgent.match(/Android/i)
+      || navigator.userAgent.match(/iPhone/i)
+      || navigator.userAgent.match(/Windows Phone/i)
+    ) {
+      return 'mobile';
+    }
+    else if (navigator.userAgent.match(/webOS/i)
+      || navigator.userAgent.match(/iPad/i)
+      || navigator.userAgent.match(/iPod/i)
+      || navigator.userAgent.match(/BlackBerry/i)
+    ) {
+      return 'tablet';
+    }
+    else {
+      return 'desktop';
+    }
+  }
+
+  function getPathAndPageName(pathname) {
+    var result = {
+      path: '',
+      pageName: ''
+    };
+    if (pathname == '/') {
+      result.path = 'homepage';
+    } else if (pathname == '/cart') {
+      result.path = 'cart';
+    } else if (pathname == '/search') {
+      result.path = 'search';
+    } else if (pathname.indexOf('/products/') > -1) {
+      result.path = 'products';
+    } else if (pathname.indexOf('/pages') > -1) {
+      result.path = 'pages';
+    } else if (pathname.indexOf('/blogs') > -1) {
+      result.path = 'blogs';
+    }
+
+    var pathArray = pathname.split('/');
+    result.pageName = pathArray[pathArray.length - 1];
+
+    return result;
+  }
+
+  function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  }
+
+  function eraseCookie(name) {
+    document.cookie = name + '=; Max-Age=-99999999;';
+  }
+
+  function eraseWidgetCookies(shopId) {
+    [
+      'widgetId', 'angle', 'used', 'ExitIntent',
+      'expiry', 'timeToken', 'Coupon', 'DiscountType',
+      'clockEnable', 'clockType', 'clockPosition', 'gameType', 'clockStyle', 'resultShortText', 'resultHeadline', 'logo']
+      .forEach((name) => {
+        eraseCookie('tada_' + shopId + '_' + name);
+      });
+  }
+
+  function checkPriority(widgetArray) {
+    var result = widgetArray[0];
+    if (widgetArray.length > 1) {
+      for (var i = 1; i < widgetArray.length; i++) {
+        var temp = widgetArray[i];
+        if (result.displaySetting == 'all') {
+          if (temp.displaySetting != 'all') {
+            result = temp;
+          } else {
+            if (compareDate(result, widgetArray[i])) {
+              result = temp;
+            }
+          }
+        } else if (result.displaySetting == 'products' || result.displaySetting == 'pages' || result.displaySetting == 'blogs') {
+          if (temp.displaySetting == result.displaySetting) {
+            if (compareDate(result, widgetArray[i])) {
+              result = temp;
+            }
+          } else if (temp.displaySetting == 'specificProducts' || temp.displaySetting == 'specificBlogs' || temp.displaySetting == 'specificPages') {
+            result = temp;
+          }
+        } else {
+          if (temp.displaySetting == 'specificProducts' || temp.displaySetting == 'specificBlogs' || temp.displaySetting == 'specificPages') {
+            if (compareDate(result, widgetArray[i])) {
+              result = temp;
+            }
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  function matchWidget(results) {
+    var widgetArray = [];
+    var device = detectmob();
+    var pathname = window.location.pathname;
+    var pathObject = getPathAndPageName(pathname);
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].pause) {
+        continue;
+      }
+      var deviceType = JSON.parse(results[i].deviceTypes);
+      if (deviceType[device] == false) {
+        continue;
+      }
+      var displaySetting = results[i].displaySetting;
+      var pageSetting = JSON.parse(results[i].pageSetting);
+      if (displaySetting == 'all') {
+        widgetArray.push(results[i]);
+      } else if (displaySetting == 'products') {
+        if (pathObject.path == 'products') {
+          widgetArray.push(results[i]);
+        }
+      } else if (displaySetting == 'blogs') {
+        if (pathObject.path == 'blogs') {
+          widgetArray.push(results[i]);
+        }
+      } else if (displaySetting == 'pages') {
+        if (pathObject.path == 'pages') {
+          widgetArray.push(results[i]);
+        }
+      } else {
+        if (displaySetting == 'specificProducts' && pathObject.path == 'products') {
+          if (pageSetting[pathObject.pageName] && pageSetting[pathObject.pageName].enabled == true) {
+            widgetArray.push(results[i]);
+          }
+        }
+
+        if (displaySetting == 'specificBlogs' && pathObject.path == 'blogs') {
+          if (pageSetting[pathObject.pageName] && pageSetting[pathObject.pageName].enabled == true) {
+            widgetArray.push(results[i]);
+          }
+        }
+
+        if (displaySetting == 'specificPages' && pathObject.path == 'pages') {
+          if (pageSetting[pathObject.pageName] && pageSetting[pathObject.pageName].enabled == true) {
+            widgetArray.push(results[i]);
+          }
+        }
+
+        if (displaySetting == 'homepageOnly' && pathObject.path == 'homepage') {
+          widgetArray.push(results[i]);
+        }
+
+        if (displaySetting == 'specificURL') {
+          Object.keys(pageSetting).some((url) => {
+            const parsedUrl = new URL(url);
+            if (parsedUrl.pathname == pathname) {
+              widgetArray.push(results[i]);
+              return true;
+            }
+          });
+        }
+      }
+    }
+    if (widgetArray.length) {
+      return checkPriority(widgetArray, pathObject.path, pathObject.pageName);
+    } else {
+      return null;
+    }
+  }
+
+  function compareDate(result, buf) {
+    var result_date = new Date(result.created_at);
+    var buf_date = new Date(buf.created_at);
+
+    return (buf_date > result_date);
+  }
+
+  function sendRequest(url, callback) {
+    var req = createXMLHTTPObject();
+    if (!req) return callback(new Error('no XMLHTTPObject'), null);
+    req.open("GET", url, true);
+    // Setting the user agent is not allowed in most modern browsers It was
+    // a requirement for some Internet Explorer versions a long time ago.
+    // There is no need for this header if you use Internet Explorer 7 or
+    // above (or any other browser)
+    // req.setRequestHeader('User-Agent','XMLHTTP/1.0');
+    req.onreadystatechange = function () {
+      if (req.readyState != 4) return;
+      if (req.status != 200 && req.status != 304) {
+        return callback(new Error('HTTP error ' + req.status), null);
+      }
+      callback(null, req.responseText);
+    }
+    if (req.readyState == 4) return;
+    req.send();
+  }
+
+  var XMLHttpFactories = [
+    function () { return new XMLHttpRequest() },
+    function () { return new ActiveXObject("Msxml3.XMLHTTP") },
+    function () { return new ActiveXObject("Msxml2.XMLHTTP.6.0") },
+    function () { return new ActiveXObject("Msxml2.XMLHTTP.3.0") },
+    function () { return new ActiveXObject("Msxml2.XMLHTTP") },
+    function () { return new ActiveXObject("Microsoft.XMLHTTP") },
+  ];
+
+  function createXMLHTTPObject() {
+    var xmlhttp = false;
+    for (var i = 0; i < XMLHttpFactories.length; i++) {
+      try {
+        xmlhttp = XMLHttpFactories[i]();
+      }
+      catch (e) {
+        continue;
+      }
+      break;
+    }
+    return xmlhttp;
+  }
+
+})();
